@@ -1,29 +1,40 @@
 # FogFlightControl-Base
 
-This is a very barebones frontend for the FogFlightControl project.
+This repo represents the base of the code that will run on the user's machine (ie a laptop) when running the flight control system. For the onboard code, see [FogFlightControl-Arduino](https://github.com/SFSU-Fog-City-Rocketry/FogFlightControl-Arduino). This repo will include the following:
+
+- A frontend and backend for the flight control system.
+- An API for plugins that will allow them to:
+  - Read telemetry from the rocket.
+  - Send commands to the rocket.
+  - Render output to frontend.
 
 ## Installation
 
 To run the frontend, follow these steps:
 
-1. Open a terminal (Powershell on Windows, Terminal on macOS, ctrl+alt+t on Linux) and use the `cd` command to navigate to the folder where you want to download this code. We recommend using the Documents folder. Use `pwd` (print working directory) to print out the current folder and `ls` (list subdirectories) to see what folders are under your current location.
-2. Once you're in the desired folder, execute the following command to clone the repository:
-
+1. Clone the repository in your desired directory.
+```bash
+cd path/to/dir
 git clone https://github.com/SFSU-Fog-City-Rocketry/FogFlightControl-Base.git
+```
 
-3. Navigate into the `react` folder where the frontend is located:
+2. Navigate into the `react` folder where the frontend is located:
 
-cd FogFlightControl-Base/react
+``cd FogFlightControl-Base/react``
 
-4. Install the dependencies:
+3. Install dependencies:
 
-npm install
+``npm install``
 
-5. Start the frontend:
+4. Start the frontend:
 
-npm run dev
+``npm run dev``
 
-6. Point your web browser to `localhost:5173` to view the frontend.
+5. Point your web browser to `localhost:5173` to view the frontend.
+
+6. Build for production:
+
+``npm run build``
 
 ## Contributing
 
