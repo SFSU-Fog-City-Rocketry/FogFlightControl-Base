@@ -1,0 +1,10 @@
+[metadata]
+name = "Example Plugin"
+id = "example-plugin"
+version = "0.1.0"
+description = "An example plugin for the plugin system"
+authors = ["Ethan Hanlon"]
+
+[main]
+dependencies = [] # List of plugin IDs that this plugin depends on
+entrypoint = "./index.ts" # The entrypoint file for the plugin

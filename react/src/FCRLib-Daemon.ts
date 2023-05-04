@@ -58,11 +58,11 @@ export function getRunningPlugins() {
 }
 
 export function startDaemon(intervalMs: number = 100) {
-  console.log('DAEMON STARTUP REQUESTED');
-  console.log(`Interval: ${intervalMs}ms`);
+  console.log(`FogFlightControl: DAEMON STARTUP REQUESTED
+  Interval: ${intervalMs}ms`);
 
   if (DAEMON_INTERVAL) {
-    console.warn('Daemon already running.');
+    console.warn('FogFlightControl: Daemon already running.');
     return;
   };
   DAEMON_INTERVAL = setInterval(() => {
@@ -80,7 +80,7 @@ export function startDaemon(intervalMs: number = 100) {
         task.execute();
         task.status = 'COMPLETED';
       } catch(e) {
-        console.error(`Task ${task.id} failed with the following exception:\n\n${e}`);
+        console.error(`FogFlightControl: Task ${task.id} failed with the following exception:\n\n${e}`);
         task.status = 'FAILED';
       } finally {
         TASK_HISTORY.push(task);
@@ -92,18 +92,20 @@ export function startDaemon(intervalMs: number = 100) {
       task.priority = index;
     });
   }, intervalMs);
+
+  console.log('FogFlightControl: Daemon started.');
 }
 
 export function stopDaemon(clearTasks: boolean = false) {
-  console.log('DAEMON SHUTDOWN REQUESTED');
+  console.log('FogFlightControl: DAEMON SHUTDOWN REQUESTED');
   if (DAEMON_INTERVAL) {
     clearTimeout(DAEMON_INTERVAL);
     DAEMON_INTERVAL = null;
-    console.log('Daemon stopped.');
+    console.log('FogFlightControl: Daemon stopped.');
   }
   if (clearTasks) {
     TASK_QUEUE = [];
-    console.log('Task queue cleared.');
+    console.log('FogFlightControl: Task queue cleared.');
   }
 }
 
@@ -117,14 +119,14 @@ export function stopDaemon(clearTasks: boolean = false) {
  * @param plugin The plugin that created the task. If null, will be classified as a "system" task.
  * @returns The UUID of the task.
  */
-export function addTask(name: string, priority: number | "HIGHEST" | "HIGH" | "NORMAL" | "LOW" | "LOWEST", execute: (...args: any[]) => any, plugin?: Plugin): string {
+export function addTask(name: string, priority: number | "HIGHEST" | "HIGH" | "NORMAL" | "LOW" | "LOWEST", execute: (...args: any[]) => any, plugin?: Plugin): string | undefined {
   const id = generateUUUID();
   
   let taskPriority = 0;
 
   if (typeof priority === "number") {
     if (priority > TASK_QUEUE.length) taskPriority = TASK_QUEUE.length;
-    if (priority < 0) throw new Error("Priority must be a positive integer.");
+    if (priority < 0) { console.error("FogFlightControl: Priority must be a positive integer."); return; }
     taskPriority = Math.floor(priority)
   } else {
     switch (priority) {
@@ -169,7 +171,7 @@ export function removeTask(taskId: string) {
     return;
   }
 
-  console.warn(`Attempted to kill task ${taskId}, but it was not found.`);
+  console.warn(`FogFlightControl: Attempted to kill task ${taskId}, but it was not found.`);
 }
 
 function generateUUUID(): string {
