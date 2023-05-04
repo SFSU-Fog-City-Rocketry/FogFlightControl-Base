@@ -1,16 +1,10 @@
-import { Button, Divider, FormControl, FormHelperText, FormLabel, Heading, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, useDisclosure } from "@chakra-ui/react";
-import { mdiBattery, mdiDownload, mdiRocketLaunch } from "@mdi/js";
 import Icon from "@mdi/react";
 import { useState } from "react";
+import { Plugin } from "../FCRLib-Daemon";
+import { mdiBattery, mdiDownload, mdiRocketLaunch } from "@mdi/js";
+import { Button, Divider, FormControl, FormHelperText, FormLabel, Heading, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, useDisclosure } from "@chakra-ui/react";
 
-interface Plugin {
-  name: string;
-  id: string;
-  description: string;
-  version: string;
-  icon: string;
-  iconIsMdi: boolean;
-}
+
 
 export default function PluginManagement() {
   const SAMPLE_PLUGINS: Plugin[] = [
