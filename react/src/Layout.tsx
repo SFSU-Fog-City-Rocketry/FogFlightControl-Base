@@ -1,9 +1,18 @@
 import Icon from "@mdi/react";
-import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Button, ChakraProvider, Divider, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, Grid, HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalHeader, ModalOverlay, Spacer, Spinner, VStack, useDisclosure } from "@chakra-ui/react";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
-import { mdiFileTree, mdiHome, mdiLanConnect, mdiLanDisconnect, mdiMenu, mdiNetwork, mdiSpaceInvaders, mdiToyBrick } from "@mdi/js";
 import { Plugin, Task, getDaemonIsRunning, getRunningPlugins, getTaskQueue, removeTask, startDaemon, stopDaemon } from "./FCRLib-Daemon";
+import { mdiFileTree, mdiHome, mdiLanConnect, mdiLanDisconnect, mdiMenu, mdiNetwork, mdiPyramid, mdiPyramidOff, mdiRocket, mdiSpaceInvaders, mdiToyBrick } from "@mdi/js";
+import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Button, Card, CardBody, ChakraProvider, Circle, Divider, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, FormControl, FormLabel, Grid, HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalHeader, ModalOverlay, Spacer, Spinner, Stack, Switch, VStack, useDisclosure } from "@chakra-ui/react";
+import { Socket, io } from "socket.io-client";
+import { AppContext, WebSocketMessage } from "./App";
+export interface Vehicle {
+  ip: string;
+  port: number;
+  connected: boolean;
+}
+
+let socket: Socket | null = null;
 
 const customChakraTheme = {
   // TODO: implement maybe. Worst case you can just reference these in the color prop of a component.
@@ -46,7 +55,7 @@ export default function Layout() {
     });
   }
 
-  const [connectionState, setConnectionState] = useState(false);
+  const [goState, setGoState] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -79,7 +88,7 @@ export default function Layout() {
 
             <Spacer />
 
-            <ConnectionModal isConnected={connectionState}/>
+            <GoNoGoModal onGoStateChanged={(goState) => setGoState(goState)} />
 
           </HStack>
         </Box>
@@ -130,40 +139,297 @@ export default function Layout() {
   )
 }
 
-function ConnectionModal({ isConnected }: { isConnected: boolean }) {
+function GoNoGoModal({ onGoStateChanged }: { onGoStateChanged: (goState: boolean) => void }) {
+  const SAMPLE_VEHICLE: Vehicle = {
+    ip: "SIMULATION",
+    port: 9999,
+    connected: true,
+  };
+
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { socket, setSocket } = useContext(AppContext);
+
+  const [goState, setGoState] = useState(false);
+  const [vehicleConnected, setVehicleConnected] = useState(false);
+  const [backendConnected, setBackendConnected] = useState(false);
+  const [fcrConnected, setFcrConnected] = useState(false);
+  
+  const [vehicleIp, setVehicleIp] = useState('');
+  const [vehiclePort, setVehiclePort] = useState(5000);
+  const [scanDetectedVehicles, setScanDetectedVehicles] = useState<Vehicle[]>([SAMPLE_VEHICLE]);
+  const [connectedVehicle, setConnectedVehicle] = useState<Vehicle | null>(null);
+  
+  const [backendIp, setBackendIp] = useState('127.0.0.1');
+  const [backendPort, setBackendPort] = useState(3000);
+  const [backendConnecting, setBackendConnecting] = useState(false);
+
+  const [fcrConnectionBypass, setFcrConnectionBypass] = useState(false);
+
+  async function connectToBackend() {
+    setBackendConnecting(true);
+
+    const ws = new WebSocket(`ws://${backendIp}:${backendPort}`);
+
+    ws.onclose = () => {
+      setBackendConnected(false);
+      setBackendConnecting(false);
+    }
+
+    ws.onerror = (ev: Event) => {
+      console.error(ev);
+      setBackendConnected(false);
+      setBackendConnecting(false);
+    }
+
+    ws.onmessage = (ev: MessageEvent<WebSocketMessage>) => {
+      const message = JSON.parse(ev.data as any) as WebSocketMessage;
+
+      console.log(message);
+
+      if (message.payload === 'PONG') {
+        setBackendConnected(true);
+        setBackendConnecting(false);
+      }
+    }
+
+    ws.onopen = () => {
+      const ping: WebSocketMessage = {
+        senderType: 'FRONTEND',
+        recipientType: 'BACKEND',
+        messageType: 'PING',
+        payload: 'PING'
+      }
+
+      ws.send(JSON.stringify(ping));
+    }
+
+    setSocket(ws);
+  }
+
+  function disconnectFromBackend() {
+    if (socket) socket.close();
+    setSocket(null);
+    setBackendConnected(false);
+  }
+
+  useEffect(() => {
+    onGoStateChanged(goState)
+  }, [goState]);
+
+  useEffect(() => {
+    const connected = connectedVehicle !== null;
+    setVehicleConnected(connected);
+  }, [connectedVehicle])
+
+  useEffect(() => {
+    if (vehicleConnected && backendConnected && (fcrConnected || fcrConnectionBypass)) setGoState(true);
+    else setGoState(false);
+  }, [vehicleConnected, backendConnected, fcrConnected])
+
+  useEffect(() => {
+    // For now, just assume we can connect to fcr.com if the device is online
+    // TODO: Make sure we can send data to fogcityrocketry.com
+    window.addEventListener('online', () => setFcrConnected(true));
+    window.addEventListener('offline', () => setFcrConnected(false));
+    setFcrConnected(window.navigator.onLine);
+
+    // Clear interval and remove event listeners on unmount
+    return () => {
+      window.removeEventListener('online', () => setBackendConnected(true));
+      window.removeEventListener('offline', () => setBackendConnected(false));
+    }
+  }, []);
+
   return (
     <>
       <Button onClick={onOpen} variant="outline">
         {
-          isConnected ?
+          goState ?
           <>
-            <Icon path={mdiLanConnect} size={1} color="#22c55e" />
-            <span className="text-green-500 ml-2">Connected</span>
+            <Icon path={mdiPyramid} size={1} color="#22c55e" />
+            <span className="text-green-500 ml-2 tracking-widest">GO</span>
           </>
           :
           <>
-            <Icon path={mdiLanDisconnect} size={1} color="#ef4444" />
-            <span className="text-red-500 ml-2">Disconnected</span>
+            <Icon path={mdiPyramidOff} size={1} color="#ef4444" />
+            <span className="text-red-500 ml-2 tracking-widest">NO GO</span>
           </>
         }
       </Button>
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Connect</ModalHeader>
+          {/* Global go/no go */}
+          <ModalHeader>Go/No Go Status</ModalHeader>
           <ModalCloseButton />
 
           <ModalBody>
-            <div className="flex items-center justify-center mb-5">
-              Searching...
-              <Spinner className="ml-2" />
+            <span className="flex items-center text-2xl font-bold">
+              The vehicle is currently&nbsp;<span className={goState ? "text-green-500" : "text-red-500"}>{goState ? "Go" : "No Go"}</span>&nbsp;for launch.
+            </span>
+            Nb. This only represents the state of the ground station, not the vehicle, launch site, or weather.
+            
+            <Divider className="mt-4 mb-4" />
+
+            {/* Vehicle Connection */}
+            <span className="text-lg font-semibold mb-2">
+              Connection to vehicle:&nbsp;<span className={vehicleConnected ? "text-green-500" : "text-red-500"}>{vehicleConnected ? "GO" : "NO GO"}</span>
+            </span>
+
+
+            {/* Connected Vehicle */}
+
+            <div className="text-lg font-semibold mb-2 flex items-center justify-center">
+              Connected vehicle:&nbsp;
+            </div>
+            <HStack>
+              <Spacer />
+                {connectedVehicle ?
+                  <Card w="lg" bg="#26547C">
+                    <CardBody className='flex items-center justify-center'>
+                      <Stack direction="row">
+                        <Circle bg="#231161" p="1.5" size={20}>
+                          <Icon path={mdiRocket} size={1} color="#C99700" />
+                        </Circle>
+                        <Divider orientation="vertical"/>
+                        <VStack>
+                          <span className="text-white text-md mb-2">
+                            IP: {connectedVehicle.ip}:{connectedVehicle.port}
+                          </span>
+                          <Button colorScheme="red" onClick={() => setConnectedVehicle(null)}>Disconnect</Button>
+                        </VStack>
+                      </Stack>
+                    </CardBody>
+                  </Card>
+                : <>Not Connected</>}
+              <Spacer />
+            </HStack>
+
+            {/* List of detected vehicles */}
+            <div className="flex flex-col items-center justify-center mb-5">
+              <span className="text-xl font-bold mr-4">
+                Detected vehicles:
+              </span>
+              <div className="flex items-center justify-center mb-5">
+                Scanning...
+                <Spinner className="ml-2" />
+              </div>
+              <VStack>
+                {scanDetectedVehicles.map((vehicle, index) => {
+                  return (
+                    <Box key={index} w="xl" p="1.5" rounded="xl" bg="#26547C" className="flex items-center">
+                      <Spacer />
+                      <Circle bg="#231161" p="1.5">
+                        <Icon path={mdiRocket} size={1} color="#C99700" />
+                      </Circle>
+                      <span className="text-white m-1.5">{vehicle.ip}:{vehicle.port}</span>
+                      <Button colorScheme="blue" onClick={() => { setVehicleConnected(true); setConnectedVehicle(vehicle) }}>Connect</Button>
+                      <Spacer />
+                    </Box>
+                  )
+                })}
+              </VStack>
             </div>
 
             <HStack>
-              <Icon path={mdiNetwork} size={1} />
-              <Input placeholder="IP Address" />
+              <Spacer />
+              <Icon path={mdiRocket} size={1} />
+              <Input w="md" placeholder="Vehicle IP Address" onChange={(e) => { setVehicleIp(e.target.value); e.preventDefault(); }}/>
+              <Input 
+                w="6xs" placeholder="Port" 
+                type="number"
+                onChange={(e) => { 
+                  if (isNaN(parseInt(e.target.value))) return;
+                  setVehiclePort(parseInt(e.target.value)); 
+                  e.preventDefault(); 
+                }} 
+                value={vehiclePort} />
               <Button colorScheme="blue">Connect</Button>
+              <Spacer />
+            </HStack>
+
+            <Divider className="mt-4 mb-4" />
+
+            {/* Backend Connection */}
+            <span className="text-lg font-semibold mb-2">
+              Connection to backend:&nbsp;<span className={backendConnected ? "text-green-500" : "text-red-500"}>{backendConnected ? "GO" : "NO GO"}</span>
+            </span>
+
+            <div className="flex items-center justify-center mb-5">
+              {backendConnected ? `Connected to backend at ${backendIp}:${backendPort}` : `Disconnected from backend. Make sure it is running and that the port is correct.`}
+            </div>
+
+            <HStack>
+              <Spacer />
+              <Icon path={mdiNetwork} size={1} />
+              
+              <Input 
+                w="md"
+                placeholder="Backend IP Address"
+                disabled={backendConnected}
+                value={backendIp}
+                onChange={(e) => { setBackendIp(e.target.value); e.preventDefault(); }}
+                />
+              
+              <Input 
+                w="6xs" placeholder="Port" 
+                type="number"
+                disabled={backendConnected}
+                value={backendPort}
+                onChange={(e) => { 
+                  if (isNaN(parseInt(e.target.value))) return;
+                  setBackendPort(parseInt(e.target.value));
+                  e.preventDefault(); 
+                }} 
+              />
+              {backendConnected ? 
+              <Button colorScheme="red" isLoading={backendConnecting} onClick={disconnectFromBackend}>Disconnect</Button>
+              :
+              <Button colorScheme="blue" isLoading={backendConnecting} onClick={connectToBackend}>Connect</Button>
+              }
+              <Spacer />
+            </HStack>
+
+            <Divider className="mt-4 mb-4" />
+
+            {/* fogcityrocketry.com connection */}
+            <span className="text-lg font-semibold mb-2">
+              Connection to fogcityrocketry.com:&nbsp;
+              <span className={fcrConnected ? "text-green-500" : fcrConnectionBypass ? "text-gray-500" : "text-red-500"}>
+                {fcrConnected ? 
+                  "GO" : fcrConnectionBypass ? "BYPASSED" : "NO GO"}
+              </span>
+            </span>
+            <FormControl display='flex' alignItems='center'>
+              <FormLabel htmlFor='fcrBypassSwitch' mb='0'>
+                Bypass
+              </FormLabel>
+              <Switch id='fcrBypassSwitch' isChecked={fcrConnectionBypass} onChange={(e) => setFcrConnectionBypass(e.target.checked)} />
+            </FormControl>
+
+            <Divider className="mt-4 mb-4" />
+
+            {/* Daemon Status */}
+            <span className="text-lg font-semibold mb-2">
+              Daemon Status:&nbsp;<span className={fcrConnected ? "text-green-500" : "text-red-500"}>{fcrConnected ? "GO" : "NO GO"}</span>
+            </span>
+
+            <Divider className="mt-4 mb-4" />
+
+            {/* Weather */}
+            <span className="text-lg font-semibold mb-2">
+              Weather
+            </span>
+
+            <span className="flex items-center justify-center">
+              Click on a location to view the weather forecast. 
+            </span>
+
+            {/* Windy.com wind/pressure map and weather forecast */}
+            <HStack>
+              <Spacer />
+              <iframe width="650" height="450" src="https://embed.windy.com/embed2.html?lat=34.561&lon=-119.795&detailLat=37.751&detailLon=-97.822&width=650&height=450&zoom=5&level=surface&overlay=wind&product=ecmwf&menu=&message=true&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=true&metricWind=default&metricTemp=default&radarRange=-1"></iframe>
+              <Spacer />
             </HStack>
           </ModalBody>
         </ModalContent>
@@ -233,6 +499,20 @@ function TaskManagerModal() {
     const localPlugins = getRunningPlugins();
     const localDaemonRunning = getDaemonIsRunning();
 
+    // Sort tasks by priority
+    localTasks.sort((a, b) => {
+      if (a.priority > b.priority) return 1;
+      if (a.priority < b.priority) return -1;
+      return 0;
+    });
+
+    // Sort plugins alphabetically
+    localPlugins.sort((a, b) => {
+      if (a.name > b.name) return 1;
+      if (a.name < b.name) return -1;
+      return 0;
+    })
+
     const tasksChanged = !arrayEquals(localTasks, prevTasksRef.current);
     const pluginsChanged = !arrayEquals(localPlugins, prevPluginsRef.current);
     const daemonRunningChanged = localDaemonRunning != prevDaemonRunningRef.current;
@@ -290,7 +570,7 @@ function TaskManagerModal() {
 
     return (
       <VStack>
-        {plugins.map((plugin, index, array) => {
+        {plugins.map((plugin, index) => {
           return (
             <Accordion key={plugin.id}>
               <AccordionItem>
@@ -348,6 +628,10 @@ function TaskManagerModal() {
           <ModalBody>
             <div className="flex flex-col items-center justify-center mb-5">
               <DaemonRunning />
+              <span className="flex items-center text-xl font-bold mr-4">
+                Listening for tasks...
+                <Spinner className="ml-2" />
+              </span>
               <TaskList />
             </div>
           </ModalBody>

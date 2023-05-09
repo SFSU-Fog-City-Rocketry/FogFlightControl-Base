@@ -32,9 +32,27 @@ git clone https://github.com/SFSU-Fog-City-Rocketry/FogFlightControl-Base.git
 
 5. Point your web browser to `localhost:5173` to view the frontend.
 
-6. Build for production:
+6. *In a separate shell*, navigate to the backend:
+  
+  ``cd FogFlightControl-Base/Backend``
 
-``npm run build``
+7. Start the backend:
+
+``npm run start``
+
+
+## Setup
+
+<!-- TODO: Add more pictures and maybe more steps -->
+
+1. Follow the installation instructions
+2. In the frontend, open the go/no go screen and connect to the vehicle or use the provided simulation.
+3. In the same screen, type in the port and click the connect button to connect to the backend.
+4. Go to the plugin management screen and upload your plugin zip files.
+
+## FCRLib docs
+
+todo
 
 ## Contributing
 
