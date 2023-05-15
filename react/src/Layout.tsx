@@ -5,7 +5,7 @@ import { Plugin, Task, getDaemonIsRunning, getRunningPlugins, getTaskQueue, remo
 import { mdiFileTree, mdiHome, mdiLanConnect, mdiLanDisconnect, mdiMenu, mdiNetwork, mdiPyramid, mdiPyramidOff, mdiRocket, mdiSpaceInvaders, mdiToyBrick } from "@mdi/js";
 import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box, Button, Card, CardBody, ChakraProvider, Circle, Divider, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, FormControl, FormLabel, Grid, HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalHeader, ModalOverlay, Spacer, Spinner, Stack, Switch, VStack, useDisclosure } from "@chakra-ui/react";
 import { Socket, io } from "socket.io-client";
-import { AppContext, WebSocketMessage } from "./App";
+import { AppContext, WebSocketMessage, websocketClient } from "./App";
 export interface Vehicle {
   ip: string;
   port: number;
@@ -190,6 +190,8 @@ function GoNoGoModal({ onGoStateChanged }: { onGoStateChanged: (goState: boolean
         setBackendConnected(true);
         setBackendConnecting(false);
       }
+
+      // websocketClient(ev, );
     }
 
     ws.onopen = () => {

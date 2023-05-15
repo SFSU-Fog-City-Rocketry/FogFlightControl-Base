@@ -175,7 +175,7 @@ export function removeTask(taskId: string) {
   console.warn(`FogFlightControl: Attempted to kill task ${taskId}, but it was not found.`);
 }
 
-function generateUUUID(): string {
+export function generateUUUID(): string {
   // Generates a UUID according to RFC4122
   // https://stackoverflow.com/a/2117523/1232793
   let dt = new Date().getTime();

@@ -1,6 +1,11 @@
+import fs from 'fs';
 import zipfolder from 'zip-folder';
 
-zipfolder('.', './Plugin.zip', function(err) {
+if (!fs.existsSync('./dist')) {
+  fs.mkdirSync('./dist');
+}
+
+zipfolder('.', './dist/Plugin.zip', function(err) {
   if(err) {
     console.log('Error: ', err);
   } else {

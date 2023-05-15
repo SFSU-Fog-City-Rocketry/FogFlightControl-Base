@@ -13,6 +13,7 @@ interface AppContext {
 export const AppContext = createContext<AppContext>({
   socket: null,
   setSocket: () => {},
+  
 });
 
 type SenderType = 'BACKEND' | 'FRONTEND' | 'PLUGIN' | 'VEHICLE';
@@ -45,26 +46,29 @@ export async function sendMessage(message: WebSocketMessage, context: AppContext
     socket.send(JSON.stringify(message));
   }
 
-  if (expectAck) {
-    // Add an event listener and resolve on ack, reject on timeout. Then remove the event listener.
-    return new Promise((resolve, reject) => {
-      const ackListener = (event: MessageEvent) => {
-        const ack: WebSocketMessage = JSON.parse(event.data);
-        if (ack.messageType === 'ACK') {
-          resolve(true);
-        }
+  if (!expectAck) return null;
+
+  // Add an event listener and resolve on ack, reject on timeout. Then remove the event listener.
+  return new Promise((resolve, reject) => {
+    const ackListener = (event: MessageEvent) => {
+      const ack: WebSocketMessage = JSON.parse(event.data);
+      if (ack.messageType === 'ACK') {
+        resolve(true);
       }
+    }
 
-      socket.addEventListener('message', ackListener);
+    socket.addEventListener('message', ackListener);
 
-      setTimeout(() => {
-        socket.removeEventListener('message', ackListener);
-        reject(false);
-      }, ackTimeoutMs);
-    })
-  }
+    setTimeout(() => {
+      socket.removeEventListener('message', ackListener);
+      reject(false);
+    }, ackTimeoutMs);
+  })
+}
 
-  return null;
+export async function websocketClient(message: MessageEvent<WebSocketMessage>, context: AppContext) {
+  const { data } = message;
+  console.log(data);
 }
 
 function App() {

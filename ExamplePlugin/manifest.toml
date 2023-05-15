@@ -7,11 +7,5 @@ authors = ["Ethan Hanlon"]
 
 [main]
 dependencies = [] # List of plugin IDs that this plugin depends on
-entrypoint = "./index.ts" # The entrypoint file for the plugin
-
-[pages]
-# List of pages that this plugin provides
-# The key is the path to the page, and the value is the path to the file
-# relative to the plugin's root directory
-"/example-page" = "./pages/example-page.tsx"
-
+entrypoint = "./lib/index.js" # The entrypoint file for the plugin
+pages = ['ExamplePage']  # The list of routes to generate for this plugin
